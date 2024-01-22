@@ -1,9 +1,8 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_datetime_picker_plus/flutter_datetime_picker_plus.dart'
-    as DateTimePicker;
 import 'package:mis_lab3/auth_gate.dart';
 import 'package:mis_lab3/models/exam_term.dart';
+import 'package:mis_lab3/services/notification_service.dart';
 import 'package:table_calendar/table_calendar.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -32,7 +31,8 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void initState() {
     super.initState();
-    selectedEvents = ValueNotifier(examTerms);
+    selectedEvents = ValueNotifier(examTerms.where((element) => isSameDay(element.examTerm, selectedDay)).toList());
+    scheduleEarliestExam();
   }
 
   @override
@@ -41,9 +41,16 @@ class _HomeScreenState extends State<HomeScreen> {
     super.dispose();
   }
 
+  void scheduleEarliestExam() {
+    List<ExamTerm> sortedExamsByDate = List.of(examTerms);
+    sortedExamsByDate.sort((a, b) => a.examTerm!.compareTo(b.examTerm!),);
+      NotificationService().scheduleNotification(
+      title: 'Термин за ${sortedExamsByDate[0].subjectName} наскоро!', body: 'Терминот за предметот ${sortedExamsByDate[0].subjectName} е на ${sortedExamsByDate[0].examTerm!.day.toString().padLeft(2, '0')}:${sortedExamsByDate[0].examTerm!.month.toString().padLeft(2, '0')}} во ${sortedExamsByDate[0].examTerm!.hour.toString().padLeft(2, '0')}:${sortedExamsByDate[0].examTerm!.minute.toString().padLeft(2, '0')}h',
+            scheduledNotificationDateTime: DateTime(sortedExamsByDate[0].examTerm!.year, sortedExamsByDate[0].examTerm!.month, sortedExamsByDate[0].examTerm!.day - 1, DateTime.now().hour, DateTime.now().minute));
+  }
+
   List<ExamTerm> _getEventsForDay(DateTime day) {
-    examTerms.sort(((a, b) => a.examTerm!.compareTo(b.examTerm!)));
-    return examTerms.where((element) => isSameDay(day, element.examTerm)).toList() ?? [];
+    return examTerms.where((element) => isSameDay(day, element.examTerm)).toList();
   }
 
   void showCalendar() {
@@ -88,6 +95,9 @@ class _HomeScreenState extends State<HomeScreen> {
                           borderRadius: BorderRadius.circular(12.0),
                         ),
                         child: ListTile(
+                          onTap: () {
+                            NotificationService().showNotification(title: 'Термин за ${value[index].subjectName}', body: 'Терминот за предметот ${value[index].subjectName} е на ${value[index].examTerm!.day.toString().padLeft(2, '0')}:${value[index].examTerm!.month.toString().padLeft(2, '0')}} во ${value[index].examTerm!.hour.toString().padLeft(2, '0')}:${value[index].examTerm!.minute.toString().padLeft(2, '0')}h');
+                          },
                           title: Text('${value[index].subjectName} - ${value[index].examTerm!.hour.toString().padLeft(2, '0')}:${value[index].examTerm!.minute.toString().padLeft(2, '0')}'),
                         ),
                       );
